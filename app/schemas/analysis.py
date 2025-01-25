@@ -93,8 +93,5 @@ class AnalysisResponseSchema(BaseModel):
     @staticmethod
     def format_response(results: BiasResultList) -> Dict:
         return {
-            "biases": [result.model_dump() for result in results.results],
-            "count": len(results.results),
-            "total_percentage": 100,
-            "schema_version": "1.1.3"
+            "results": [result.model_dump() for result in results.results]
         }

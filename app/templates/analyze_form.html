@@ -28,7 +28,7 @@
 
                     <div>
                         <button type="submit"
-                            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-colors duration-200">
                             Analyze Text
                         </button>
                     </div>
@@ -36,9 +36,7 @@
 
                 <div id="results" class="mt-8 hidden">
                     <h2 class="text-xl font-semibold mb-4">Analysis Results</h2>
-                    <div class="grid grid-cols-1 gap-4">
-                        <div id="resultsContent" class="space-y-4"></div>
-                    </div>
+                    <div id="resultsContent" class="space-y-4"></div>
                 </div>
             </div>
         </div>
@@ -80,19 +78,66 @@
             // Clear previous results
             contentDiv.innerHTML = '';
 
-            // Display each bias result
-            data.results.forEach(result => {  // Changed from data.biases to data.results
-                const resultDiv = document.createElement('div');
-                resultDiv.className = 'bg-gray-50 p-4 rounded-lg';
-                resultDiv.innerHTML = `
-                    <h3 class="font-medium">${result.bias_name} (${result.percentage}%)</h3>
-                    <p class="text-sm text-gray-600">${result.description}</p>
+            // Create distribution container
+            const distributionContainer = document.createElement('div');
+            distributionContainer.className = 'mb-8 p-6 bg-white rounded-lg shadow-sm';
+            distributionContainer.innerHTML = `
+                <h3 class="text-lg font-semibold mb-4">Bias Distribution</h3>
+                <div class="grid grid-cols-1 gap-4" id="distributionList"></div>
+            `;
+            contentDiv.appendChild(distributionContainer);
+
+            // Display distribution percentages with expandable descriptions
+            const distributionList = document.getElementById('distributionList');
+            data.results.forEach(result => {
+                const item = document.createElement('div');
+                item.className = 'bg-gray-50 rounded-lg';
+                item.innerHTML = `
+                    <div class="flex justify-between items-center p-3">
+                        <div class="flex items-center gap-2">
+                            <button class="expand-btn text-gray-500 hover:text-indigo-600 transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                </svg>
+                            </button>
+                            <span class="font-medium">${result.bias_name}</span>
+                        </div>
+                        <span class="font-bold ${getPercentageColor(result.percentage)}">${result.percentage}%</span>
+                    </div>
+                    <div class="description hidden px-3 pb-3 pl-8">
+                        <p class="text-sm text-gray-600">${result.description}</p>
+                    </div>
                 `;
-                contentDiv.appendChild(biasDiv);
+                distributionList.appendChild(item);
+            });
+
+            // Add click handlers for expand buttons
+            document.querySelectorAll('.expand-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const item = button.closest('.bg-gray-50');
+                    const description = item.querySelector('.description');
+                    const percentage = item.querySelector('.font-bold');
+
+                    // Toggle visibility
+                    description.classList.toggle('hidden');
+
+                    // Rotate plus icon
+                    button.querySelector('svg').classList.toggle('rotate-45');
+
+                    // Ensure percentage stays visible
+                    percentage.classList.remove('hidden');
+                });
             });
 
             // Show results section
             resultsDiv.classList.remove('hidden');
+        }
+
+        function getPercentageColor(percentage) {
+            if (percentage >= 70) return 'text-red-600';
+            if (percentage >= 40) return 'text-orange-500';
+            return 'text-green-600';
         }
     </script>
 </body>
