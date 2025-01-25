@@ -1,4 +1,5 @@
 aiofiles==24.1.0
+annotated-types==0.7.0
 anyio==4.8.0
 blinker==1.9.0
 certifi==2024.12.14
@@ -16,7 +17,10 @@ itsdangerous==2.2.0
 Jinja2==3.1.5
 MarkupSafe==3.0.2
 numpy==2.2.2
+pandas==2.2.3
 priority==2.0.0
+pydantic==2.10.6
+pydantic_core==2.27.2
 python-dateutil==2.9.0.post0
 pytz==2024.2
 Quart==0.20.0
