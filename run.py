@@ -8,16 +8,19 @@ def create_app():
     app = cors(app, allow_origin="*")
 
     # Register blueprint
-    from app.routes.analysis import analysis_bp
     app.register_blueprint(analysis_bp)
 
     # Debug routes
-    print("Registered routes:")
-    for rule in app.url_map.iter_rules():
-        print(f"- {rule}")
+    @app.before_serving
+    async def show_routes():
+        print("Registered routes:")
+        for rule in app.url_map.iter_rules():
+            print(f"- {rule}")
 
     return app
 
+# Create app instance for ASGI servers
+app = create_app()
+
 if __name__ == "__main__":
-    app = create_app()
     app.run(host='0.0.0.0', port=5000)
