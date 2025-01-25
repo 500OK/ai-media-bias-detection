@@ -5,76 +5,91 @@ from typing import List, Dict, ClassVar
 import re
 
 class BiasResult(BaseModel):
-    ALLOWED_BIASES: ClassVar[set] = {
-        'Framing', 'Omission', 'Source Attribution',
-        'Partisan', 'Contextual Superficiality',
-        'Implicit Advocacy', 'Selection Bias',
-        'Confirmation Bias'
-    }
-
     bias_name: str = Field(..., description="Type of detected media bias")
-    percentage: conint(ge=0, le=100, multiple_of=5)
-    description: str = Field(..., max_length=100)
-
-    @validator('bias_name')
-    def validate_bias_type(cls, value):
-        if value not in cls.ALLOWED_BIASES:
-            raise ValueError(f'Invalid bias type: {value}. Allowed: {cls.ALLOWED_BIASES}')
-        return value
+    percentage: float
+    description: str = Field(..., max_length=300)
 
     @validator('description')
     def validate_description(cls, value):
-        if len(value.split()) > 15:
-            raise ValueError('Description exceeds 15 word limit')
+        if len(value.split()) > 100:
+            raise ValueError('Description exceeds 30 word limit')
+        return value
+
+    @validator('percentage')
+    def validate_percentage(cls, value):
+        if not (0 <= value <= 100):
+            raise ValueError("Percentage must be between 0-100")
         return value
 
 class BiasResultList(BaseModel):
     results: List[BiasResult] = Field(..., min_items=1)
 
-    @validator('results')
-    def validate_percentages(cls, v):
-        total = sum(item.percentage for item in v)
-        if total != 100:
-            raise ValueError(f'Total percentage must be 100 (got {total})')
-        return v
-
 class AnalysisRequestSchema:
-    PROMPT = f"""  # Changed from PROMPT_TEMPLATE to PROMPT
-    Analyze news text and return biases in this JSON format:
-    {json.dumps(BiasResultList.model_json_schema(), indent=2)}
+    PROMPT = """
+    Analyze news text and return detected biases in this exact JSON format:
+    {
+        "results": [
+            {
+                "bias_name": "string",
+                "description": "string",
+                "percentage": number
+            }
+        ]
+    }
     
     Rules:
-    1. Total must equal 100% (multiples of 5)
-    2. Allowed bias types: {', '.join(BiasResult.ALLOWED_BIASES)}
-    3. Descriptions: same language as text, ≤15 words
+    1. Each bias should be evaluated independently from 0 to 100%
+    2. The sum of percentages doesn't need to equal 100%
+    3. Descriptions and bias names MUST be in the same language as the input text
+    4. Identify all potential biases present in the text
+    5. Use natural language terms for bias names that match the input text's language
     
-    Example:
-    {BiasResultList(
-        results=[
-            BiasResult(
-                bias_name="Omission",
-                percentage=40,
-                description="Excludes opposing political views"
-            ),
-            BiasResult(
-                bias_name="Framing",
-                percentage=35,
-                description="Emphasizes negative aspects disproportionately"
-            ),
-            BiasResult(
-                bias_name="Source Attribution",
-                percentage=25,
-                description="Relies solely on government sources"
-            )
+    Example for English:
+    {
+        "results": [
+            {
+                "bias_name": "Political Bias",
+                "description": "Favors one political side",
+                "percentage": 45
+            },
+            {
+                "bias_name": "Omission",
+                "description": "Ignores important counterarguments",
+                "percentage": 30
+            }
         ]
-    ).model_dump_json(indent=2)}
+    }
+
+    Example for Romanian text:
+    {
+        "results": [
+            {
+                "bias_name": "Părtinire Politică",
+                "description": "Textul favorizează o anumită poziție politică",
+                "percentage": 45
+            },
+            {
+                "bias_name": "Omisiune",
+                "description": "Lipsesc informații importante despre contraargumente",
+                "percentage": 30
+            }
+        ]
+    }
     """
 
     @classmethod
     def get_prompt(cls):
         return re.sub(r'\n\s+', '\n', cls.PROMPT).strip()
 
-class AnalysisResponseSchema:
+class AnalysisResponseSchema(BaseModel):
+    results: List[BiasResult]
+
+    @validator('results')
+    def validate_results(cls, value):
+        if not value:
+            raise ValueError("At least one bias result is required")
+        return value
+
     @staticmethod
     def format_response(results: BiasResultList) -> Dict:
         return {

@@ -6,6 +6,7 @@ from app.config import config
 def create_app():
     app = Quart(__name__)
     app = cors(app, allow_origin="*")
+    app.template_folder = 'app/templates'
 
     # Register blueprint
     app.register_blueprint(analysis_bp)
