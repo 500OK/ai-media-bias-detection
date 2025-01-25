@@ -6,6 +6,22 @@ from pydantic import ValidationError
 
 analysis_bp = Blueprint('analysis', __name__, url_prefix='/')
 
+@analysis_bp.route('/')
+async def index():
+    return await render_template('text_analysis.html')
+
+@analysis_bp.route('/text-analysis')
+async def text_analysis():
+    return await render_template('text_analysis.html')
+
+@analysis_bp.route('/image-analysis')
+async def image_analysis():
+    return await render_template('image_analysis.html')
+
+@analysis_bp.route('/video-analysis')
+async def video_analysis():
+    return await render_template('video_analysis.html')
+
 @analysis_bp.route('/analyze', methods=['POST'])
 @handle_api_error
 async def analyze_news():
@@ -44,3 +60,20 @@ async def analyze_news_fun():
 @analysis_bp.route('/', methods=['GET'])
 async def show_form():
     return await render_template('analyze_form.html')
+
+@analysis_bp.route('/analyze-image', methods=['POST'])
+async def analyze_image():
+    try:
+        file = (await request.files)['image']
+        
+        # Process image
+        extracted_text, error = await process_image(file)
+        if error:
+            return jsonify(error=error), 400
+            
+        # Send text to existing bias analysis
+        bias_response = await analyze_text(extracted_text)
+        return bias_response
+        
+    except Exception as e:
+        return jsonify(error=str(e)), 500
