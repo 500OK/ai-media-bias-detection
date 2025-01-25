@@ -27,7 +27,7 @@
                     </div>
 
                     <div>
-                        <button type="submit"
+                        <button id="submitButton" type="submit"
                             class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-colors duration-200">
                             Analyze Text
                         </button>
@@ -43,31 +43,45 @@
     </div>
 
     <script>
+        const biasColors = [
+            'bg-red-400', 'bg-blue-400', 'bg-green-400',
+            'bg-yellow-400', 'bg-purple-400', 'bg-pink-400',
+            'bg-indigo-400', 'bg-teal-400', 'bg-orange-400'
+        ];
+
         document.getElementById('analysisForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const formData = {
-                text: document.getElementById('text').value
-            };
+            // Show loading spinner
+            const submitButton = document.getElementById('submitButton');
+            submitButton.disabled = true;
+            submitButton.innerHTML = `
+                <div class="flex items-center justify-center">
+                    <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    <span class="ml-2">Analyzing...</span>
+                </div>
+            `;
 
             try {
+                const formData = new FormData(e.target);
                 const response = await fetch('/analyze', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(formData)
+                    body: JSON.stringify({
+                        text: formData.get('text')
+                    }),
                 });
-
-                if (!response.ok) {
-                    throw new Error('Analysis failed');
-                }
 
                 const data = await response.json();
                 displayResults(data);
             } catch (error) {
                 console.error('Error:', error);
-                alert('Analysis failed. Please try again.');
+            } finally {
+                // Reset button
+                submitButton.disabled = false;
+                submitButton.innerHTML = 'Analyze Text';
             }
         });
 
@@ -83,51 +97,40 @@
             distributionContainer.className = 'mb-8 p-6 bg-white rounded-lg shadow-sm';
             distributionContainer.innerHTML = `
                 <h3 class="text-lg font-semibold mb-4">Bias Distribution</h3>
+                <div class="w-full h-4 bg-gray-200 rounded-full overflow-hidden mb-4">
+                    <div class="flex h-full" id="distributionBar"></div>
+                </div>
                 <div class="grid grid-cols-1 gap-4" id="distributionList"></div>
             `;
             contentDiv.appendChild(distributionContainer);
 
-            // Display distribution percentages with expandable descriptions
+            // Create distribution bar
+            const distributionBar = document.getElementById('distributionBar');
+            data.results.forEach((result, index) => {
+                const barSegment = document.createElement('div');
+                barSegment.className = `h-full ${biasColors[index % biasColors.length]}`;
+                barSegment.style.width = `${result.percentage}%`;
+                distributionBar.appendChild(barSegment);
+            });
+
+            // Display distribution percentages with descriptions
             const distributionList = document.getElementById('distributionList');
-            data.results.forEach(result => {
+            data.results.forEach((result, index) => {
                 const item = document.createElement('div');
                 item.className = 'bg-gray-50 rounded-lg';
                 item.innerHTML = `
                     <div class="flex justify-between items-center p-3">
                         <div class="flex items-center gap-2">
-                            <button class="expand-btn text-gray-500 hover:text-indigo-600 transition-colors">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                                </svg>
-                            </button>
+                            <div class="w-3 h-3 rounded-full ${biasColors[index % biasColors.length]}"></div>
                             <span class="font-medium">${result.bias_name}</span>
                         </div>
                         <span class="font-bold ${getPercentageColor(result.percentage)}">${result.percentage}%</span>
                     </div>
-                    <div class="description hidden px-3 pb-3 pl-8">
+                    <div class="px-3 pb-3 pl-8">
                         <p class="text-sm text-gray-600">${result.description}</p>
                     </div>
                 `;
                 distributionList.appendChild(item);
-            });
-
-            // Add click handlers for expand buttons
-            document.querySelectorAll('.expand-btn').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const item = button.closest('.bg-gray-50');
-                    const description = item.querySelector('.description');
-                    const percentage = item.querySelector('.font-bold');
-
-                    // Toggle visibility
-                    description.classList.toggle('hidden');
-
-                    // Rotate plus icon
-                    button.querySelector('svg').classList.toggle('rotate-45');
-
-                    // Ensure percentage stays visible
-                    percentage.classList.remove('hidden');
-                });
             });
 
             // Show results section
