@@ -126,6 +126,9 @@
 
         // Show results section
         resultsDiv.classList.remove('hidden');
+      
+        // Scroll to the results section
+        resultsDiv.scrollIntoView({ behavior: 'smooth' });
     }
 
     function getPercentageColor(percentage) {
