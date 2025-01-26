@@ -15,8 +15,8 @@ function startLiveStats() {
 
   eventSource.onerror = () => {
     console.error("Failed to connect to the live stats server.");
-    document.getElementById("site-visits").textContent = "Error";
-    document.getElementById("processed-requests").textContent = "Error";
+    // document.getElementById("site-visits").textContent = "Error";
+    // document.getElementById("processed-requests").textContent = "Error";
     eventSource.close();
   };
 }
