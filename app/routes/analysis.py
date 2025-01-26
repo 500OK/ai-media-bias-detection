@@ -3,7 +3,9 @@ from app.services.deepseek import DeepSeekAnalyzer
 from app.utils.exceptions import handle_api_error
 from app.schemas.analysis import AnalysisRequestSchema, AnalysisResponseSchema, BiasResultList
 from pydantic import ValidationError
+from app.services.analysis_image import process_image
 
+# Define blueprint here
 analysis_bp = Blueprint('analysis', __name__, url_prefix='/')
 
 @analysis_bp.route('/')
@@ -61,19 +63,43 @@ async def analyze_news_fun():
 async def show_form():
     return await render_template('analyze_form.html')
 
+
 @analysis_bp.route('/analyze-image', methods=['POST'])
 async def analyze_image():
     try:
-        file = (await request.files)['image']
+        files = await request.files
+        if 'image' not in files:
+            return jsonify(error="No image file provided"), 400
+            
+        file = files['image']
         
-        # Process image
+        # Validate file type
+        if not file.filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+            return jsonify(error="Invalid file type. Only PNG/JPG/JPEG allowed"), 400
+            
+        # Process image and extract text
         extracted_text, error = await process_image(file)
         if error:
             return jsonify(error=error), 400
             
-        # Send text to existing bias analysis
-        bias_response = await analyze_text(extracted_text)
-        return bias_response
+        # Analyze extracted text for biases
+        analyzer = DeepSeekAnalyzer()
+        analysis_result = await analyzer.analyze_text(
+            extracted_text, 
+            AnalysisRequestSchema.get_prompt()
+        )
         
+        # Validate and return results
+        validated_result = BiasResultList(**analysis_result)
+        return jsonify({
+            "extracted_text": extracted_text,
+            "analysis": validated_result.model_dump()
+        }), 200
+        
+    except ValidationError as e:
+        return jsonify({
+            "error": "Response validation error",
+            "details": str(e)
+        }), 500
     except Exception as e:
         return jsonify(error=str(e)), 500
