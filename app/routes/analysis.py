@@ -1,3 +1,5 @@
+from redis import Redis
+from app.config import config
 from quart import Blueprint, request, jsonify, render_template
 from app.services.deepseek import DeepSeekAnalyzer
 from app.utils.exceptions import handle_api_error
@@ -5,28 +7,54 @@ from app.schemas.analysis import AnalysisRequestSchema, AnalysisResponseSchema, 
 from pydantic import ValidationError
 from app.services.analysis_image import process_image
 
-# Define blueprint here
+# Define blueprint and Redis connection
 analysis_bp = Blueprint('analysis', __name__, url_prefix='/')
+redis = None  # Placeholder for Redis connection
+
+async def get_redis():
+    global redis
+    if redis is None:
+        redis = Redis(
+            host=config.REDIS_URL,
+            port=config.REDIS_PORT,
+            decode_responses=True,
+            username=config.REDIS_USERNAME,
+            password=config.REDIS_PASSWORD
+        )
+    return redis
+
+async def increment_counter(key: str):
+    redis_conn = await get_redis()
+    redis_conn.incr(key)
+
+@analysis_bp.before_app_serving
+async def setup_redis():
+    await get_redis()
 
 @analysis_bp.route('/')
 async def index():
+    await increment_counter("site_visits")
     return await render_template('text_analysis.html')
 
 @analysis_bp.route('/text-analysis')
 async def text_analysis():
+    await increment_counter("site_visits")
     return await render_template('text_analysis.html')
 
 @analysis_bp.route('/image-analysis')
 async def image_analysis():
+    await increment_counter("site_visits")
     return await render_template('image_analysis.html')
 
 @analysis_bp.route('/video-analysis')
 async def video_analysis():
+    await increment_counter("site_visits")
     return await render_template('video_analysis.html')
 
 @analysis_bp.route('/analyze', methods=['POST'])
 @handle_api_error
 async def analyze_news():
+    await increment_counter("processed_requests")
     data = await request.get_json()
     
     if not (text := data.get('text')):
@@ -36,7 +64,6 @@ async def analyze_news():
     raw_result = await analyzer.analyze_text(text, AnalysisRequestSchema.get_prompt())
     
     try:
-        # Validate the response structure
         validated_result = BiasResultList(**raw_result)
         return jsonify(validated_result.model_dump()), 200
     except ValidationError as e:
@@ -46,26 +73,9 @@ async def analyze_news():
             "received_data": raw_result
         }), 500
 
-
-@analysis_bp.route('/analyze_fun', methods=['POST'])
-@handle_api_error
-async def analyze_news_fun():
-    data = await request.get_json()
-
-    if not (text := data.get('text')):
-        return jsonify({"status": "Internal Server Error", "message": "Missing 'text' parameter"}), 200  # 😈
-
-    analyzer = DeepSeekAnalyzer()
-    result = await analyzer.analyze_text(text, AnalysisRequestSchema.get_prompt())
-    return jsonify({"status": "OK", "data": result}), 500  # 😈
-
-@analysis_bp.route('/', methods=['GET'])
-async def show_form():
-    return await render_template('analyze_form.html')
-
-
 @analysis_bp.route('/analyze-image', methods=['POST'])
 async def analyze_image():
+    await increment_counter("processed_requests")
     try:
         files = await request.files
         if 'image' not in files:
@@ -73,23 +83,19 @@ async def analyze_image():
             
         file = files['image']
         
-        # Validate file type
         if not file.filename.lower().endswith(('.png', '.jpg', '.jpeg')):
             return jsonify(error="Invalid file type. Only PNG/JPG/JPEG allowed"), 400
             
-        # Process image and extract text
         extracted_text, error = await process_image(file)
         if error:
             return jsonify(error=error), 400
             
-        # Analyze extracted text for biases
         analyzer = DeepSeekAnalyzer()
         analysis_result = await analyzer.analyze_text(
             extracted_text, 
             AnalysisRequestSchema.get_prompt()
         )
         
-        # Validate and return results
         validated_result = BiasResultList(**analysis_result)
         return jsonify({
             "extracted_text": extracted_text,
@@ -103,3 +109,14 @@ async def analyze_image():
         }), 500
     except Exception as e:
         return jsonify(error=str(e)), 500
+
+@analysis_bp.route('/stats')
+async def stats():
+    redis_conn = await get_redis()
+    visits = redis_conn.get("site_visits") or 0
+    processed_requests = redis_conn.get("processed_requests") or 0
+    return jsonify({
+        "site_visits": visits,
+        "processed_requests": processed_requests
+    })
+
