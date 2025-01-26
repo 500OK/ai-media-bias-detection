@@ -1,6 +1,7 @@
 from redis import Redis
 from app.config import config
-from quart import Blueprint, request, jsonify, render_template
+import asyncio
+from quart import Response, Blueprint, request, jsonify, render_template
 from app.services.deepseek import DeepSeekAnalyzer
 from app.utils.exceptions import handle_api_error
 from app.schemas.analysis import AnalysisRequestSchema, AnalysisResponseSchema, BiasResultList
@@ -120,3 +121,16 @@ async def stats():
         "processed_requests": processed_requests
     })
 
+@analysis_bp.route('/stats/live')
+async def live_stats():
+    async def event_stream():
+        redis_conn = await get_redis()
+        while True:
+            site_visits = redis_conn.get("site_visits") or 0
+            processed_requests = redis_conn.get("processed_requests") or 0
+            
+            data = f"data: {{\"site_visits\": {site_visits}, \"processed_requests\": {processed_requests}}}\n\n"
+            yield data
+            await asyncio.sleep(3)  # Send updates every 3 seconds
+
+    return Response(event_stream(), content_type="text/event-stream")
