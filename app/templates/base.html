@@ -6,33 +6,49 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bias Analyzer</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="{{ url_for('static', filename='js/mobileMenu.js') }}" defer></script>
 </head>
 
 <body>
-    <nav class="bg-white shadow-lg">
-        <div class="max-w-6xl mx-auto px-4">
-            <div class="flex justify-between">
-                <div class="flex space-x-7">
-                    <a href="/" class="flex items-center py-4 px-2">
-                        <span class="font-semibold text-gray-500 text-lg">Bias Analyzer</span>
-                    </a>
+    <header class="bg-white shadow-sm fixed w-full top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <a href="/" class="text-xl font-bold">Bias Analyzer</a>
+                    </div>
                 </div>
-                <div class="hidden md:flex items-center space-x-1">
-                    <a href="/text-analysis"
-                        class="py-4 px-2 text-gray-500 font-semibold hover:text-teal-500 transition duration-300">Text
-                        Analysis</a>
-                    <a href="/image-analysis"
-                        class="py-4 px-2 text-gray-500 font-semibold hover:text-teal-500 transition duration-300">Image
-                        Analysis</a>
-                    <a href="/video-analysis"
-                        class="py-4 px-2 text-gray-500 font-semibold hover:text-teal-500 transition duration-300">Video
-                        Analysis</a>
+                <div class="hidden md:flex items-center space-x-4">
+                    <a href="/" class="text-gray-700 hover:text-gray-900">Home</a>
+                    <a href="/text-analysis" class="text-gray-700 hover:text-gray-900">Text Analysis</a>
+                    <a href="/image-analysis" class="text-gray-700 hover:text-gray-900">Image Analysis</a>
+                </div>
+                <div class="flex items-center md:hidden">
+                    <button id="mobile-menu-button" type="button"
+                        class="p-2 text-gray-700 hover:text-gray-900 focus:outline-none">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
                 </div>
             </div>
         </div>
-    </nav>
+        <div id="mobile-menu" class="hidden md:hidden bg-white shadow-lg">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                <a href="/"
+                    class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Home</a>
+                <a href="/text-analysis"
+                    class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Text
+                    Analysis</a>
+                <a href="/image-analysis"
+                    class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Image
+                    Analysis</a>
+            </div>
+        </div>
+    </header>
 
-    <main class="container mx-auto px-4 py-8">
+    <main class="pt-20 pb-8">
         {% block content %}{% endblock %}
     </main>
 </body>
