@@ -87,6 +87,9 @@ class ResultsDisplay {
         });
 
         console.log('[DEBUG] Results display completed');
+
+        // Scroll to the results section
+        this.resultsDiv.scrollIntoView({ behavior: 'smooth' });
     }
 
     getPercentageColor(percentage) {
